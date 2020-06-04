@@ -129,7 +129,8 @@ namespace DbUp.Support
         protected IDbCommand GetCreateTableCommand(Func<IDbCommand> dbCommandFactory)
         {
             var command = dbCommandFactory();
-            var primaryKeyName = sqlObjectParser.QuoteIdentifier("PK_" + UnquotedSchemaTableName + "_Id");
+            var logicalName = UnquotedSchemaTableName.Substring(3);
+            var primaryKeyName = sqlObjectParser.QuoteIdentifier("PK_" + logicalName + "_ID");
             command.CommandText = CreateSchemaTableSql(primaryKeyName);
             command.CommandType = CommandType.Text;
             return command;

@@ -27,31 +27,33 @@ namespace DbUp.Oracle
         protected override string CreateSchemaTableSql(string quotedPrimaryKeyName)
         {
             var fqSchemaTableName = UnquotedSchemaTableName;
+            var fqSchemaLogicalName = UnquotedSchemaTableName.Substring(3);
             return
                 $@" CREATE TABLE {fqSchemaTableName} 
                 (
-                    schemaversionid NUMBER(10),
+                    id NUMBER(10),
                     scriptname VARCHAR2(255) NOT NULL,
                     applied TIMESTAMP NOT NULL,
-                    CONSTRAINT PK_{ fqSchemaTableName } PRIMARY KEY (schemaversionid) 
+                    CONSTRAINT PK_{ fqSchemaLogicalName } PRIMARY KEY (id) 
                 )";
         }
 
         protected string CreateSchemaTableSequenceSql()
         {
-            var fqSchemaTableName = UnquotedSchemaTableName;
-            return $@" CREATE SEQUENCE {fqSchemaTableName}_sequence";
+            var fqSchemaTableName = UnquotedSchemaTableName.Substring(3);
+            return $@" CREATE SEQUENCE SEQ_{fqSchemaTableName}";
         }
 
         protected string CreateSchemaTableTriggerSql()
         {
             var fqSchemaTableName = UnquotedSchemaTableName;
-            return $@" CREATE OR REPLACE TRIGGER {fqSchemaTableName}_on_insert
+            var fqSchemaLogicalName = UnquotedSchemaTableName.Substring(3);
+            return $@" CREATE OR REPLACE TRIGGER I_{fqSchemaLogicalName}
                     BEFORE INSERT ON {fqSchemaTableName}
                     FOR EACH ROW
                     BEGIN
-                        SELECT {fqSchemaTableName}_sequence.nextval
-                        INTO :new.schemaversionid
+                        SELECT SEQ_{fqSchemaLogicalName}.nextval
+                        INTO :new.ID
                         FROM dual;
                     END;
                 ";
@@ -60,7 +62,8 @@ namespace DbUp.Oracle
         protected override string GetInsertJournalEntrySql(string scriptName, string applied)
         {
             var unquotedSchemaTableName = UnquotedSchemaTableName.ToUpper(English);
-            return $"insert into {unquotedSchemaTableName} (ScriptName, Applied) values (:" + scriptName.Replace("@", "") + ",:" + applied.Replace("@", "") + ")";
+            var fqSchemaLogicalName = UnquotedSchemaTableName.Substring(3);
+            return $"insert into {unquotedSchemaTableName} (ID, ScriptName, Applied) values (SEQ_{fqSchemaLogicalName}.nextval, :" + scriptName.Replace("@", "") + ",:" + applied.Replace("@", "") + ")";
         }
 
         protected override string GetJournalEntriesSql()
@@ -109,11 +112,11 @@ namespace DbUp.Oracle
                     command.ExecuteNonQuery();
                 }
 
-                // We will never change the schema of the initial table create.
-                using (var command = GetCreateTableTrigger(dbCommandFactory))
-                {
-                    command.ExecuteNonQuery();
-                }
+                //// We will never change the schema of the initial table create.
+                //using (var command = GetCreateTableTrigger(dbCommandFactory))
+                //{
+                //    command.ExecuteNonQuery();
+                //}
 
                 Log().WriteInformation(string.Format("The {0} table has been created", FqSchemaTableName));
 

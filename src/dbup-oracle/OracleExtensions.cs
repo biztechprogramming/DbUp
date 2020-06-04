@@ -66,7 +66,7 @@ namespace DbUp.Oracle
             var builder = new UpgradeEngineBuilder();
             builder.Configure(c => c.ConnectionManager = connectionManager);
             builder.Configure(c => c.ScriptExecutor = new OracleScriptExecutor(() => c.ConnectionManager, () => c.Log, null, () => c.VariablesEnabled, c.ScriptPreprocessors, () => c.Journal));
-            builder.Configure(c => c.Journal = new OracleTableJournal(() => c.ConnectionManager, () => c.Log, schema, "schemaversions"));
+            builder.Configure(c => c.Journal = new OracleTableJournal(() => c.ConnectionManager, () => c.Log, schema, "BT_SCHEMA_VERSION"));
             builder.WithPreprocessor(new OraclePreprocessor());
             return builder;
         }
