@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Text;
 
 namespace DbUp.ScriptProviders
@@ -14,7 +14,7 @@ namespace DbUp.ScriptProviders
         public FileSystemScriptOptions()
         {
             Encoding = DbUpDefaults.DefaultEncoding;
-            Extensions = new[] { "*.sql" };
+            Extensions = new[] { "*.sql", "*.txt" };
         }
         /// <summary>
         /// The provider will look in subdirectories for scripts files.

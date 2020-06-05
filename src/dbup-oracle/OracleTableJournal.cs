@@ -34,6 +34,10 @@ namespace DbUp.Oracle
                     id NUMBER(10),
                     scriptname VARCHAR2(255) NOT NULL,
                     applied TIMESTAMP NOT NULL,
+	                CREATED_BY NUMBER, 
+                    CREATED_DT DATE, 
+	                CHANGED_BY NUMBER, 
+	                CHANGED_DT DATE, 
                     CONSTRAINT PK_{ fqSchemaLogicalName } PRIMARY KEY (id) 
                 )";
         }
@@ -44,7 +48,7 @@ namespace DbUp.Oracle
             return $@" CREATE SEQUENCE SEQ_{fqSchemaTableName}";
         }
 
-        protected string CreateSchemaTableTriggerSql()
+        protected string CreateSchemaTableInsertTriggerSql()
         {
             var fqSchemaTableName = UnquotedSchemaTableName;
             var fqSchemaLogicalName = UnquotedSchemaTableName.Substring(3);
@@ -52,8 +56,23 @@ namespace DbUp.Oracle
                     BEFORE INSERT ON {fqSchemaTableName}
                     FOR EACH ROW
                     BEGIN
-                        SELECT SEQ_{fqSchemaLogicalName}.nextval
-                        INTO :new.ID
+                        SELECT 1, SYSDATE
+                        INTO :new.CREATED_BY, :new.CREATED_DT
+                        FROM dual;
+                    END;
+                ";
+        }
+
+        protected string CreateSchemaTableUpdateTriggerSql()
+        {
+            var fqSchemaTableName = UnquotedSchemaTableName;
+            var fqSchemaLogicalName = UnquotedSchemaTableName.Substring(3);
+            return $@" CREATE OR REPLACE TRIGGER U_{fqSchemaLogicalName}
+                    BEFORE UPDATE ON {fqSchemaTableName}
+                    FOR EACH ROW
+                    BEGIN
+                        SELECT 1, SYSDATE
+                        INTO :new.CHANGED_BY, :new.CHANGED_DT
                         FROM dual;
                     END;
                 ";
@@ -86,10 +105,18 @@ namespace DbUp.Oracle
             return command;
         }
 
-        protected IDbCommand GetCreateTableTrigger(Func<IDbCommand> dbCommandFactory)
+        protected IDbCommand GetCreateTableInsertTrigger(Func<IDbCommand> dbCommandFactory)
         {
             var command = dbCommandFactory();
-            command.CommandText = CreateSchemaTableTriggerSql();
+            command.CommandText = CreateSchemaTableInsertTriggerSql();
+            command.CommandType = CommandType.Text;
+            return command;
+        }
+
+        protected IDbCommand GetCreateTableUpdateTrigger(Func<IDbCommand> dbCommandFactory)
+        {
+            var command = dbCommandFactory();
+            command.CommandText = CreateSchemaTableUpdateTriggerSql();
             command.CommandType = CommandType.Text;
             return command;
         }
@@ -112,11 +139,17 @@ namespace DbUp.Oracle
                     command.ExecuteNonQuery();
                 }
 
-                //// We will never change the schema of the initial table create.
-                //using (var command = GetCreateTableTrigger(dbCommandFactory))
-                //{
-                //    command.ExecuteNonQuery();
-                //}
+                // We will never change the schema of the initial table create.
+                using (var command = GetCreateTableInsertTrigger(dbCommandFactory))
+                {
+                    command.ExecuteNonQuery();
+                }
+
+                // We will never change the schema of the initial table create.
+                using (var command = GetCreateTableUpdateTrigger(dbCommandFactory))
+                {
+                    command.ExecuteNonQuery();
+                }
 
                 Log().WriteInformation(string.Format("The {0} table has been created", FqSchemaTableName));
 
